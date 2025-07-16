@@ -15,10 +15,10 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # すべてのオリジンを許可（開発用）
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],  # すべてのHTTPメソッドを許可
-    allow_headers=["*"],  # すべてのHTTPヘッダーを許可
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 with open("schedule.json","r") as f:
@@ -52,7 +52,6 @@ def get_vod_playlist():
 
     current_program = None
     program_start_time = None
-    prev_program = None
 
     #現在時間に放送されている番組を特定
     for i,program in enumerate(schedule):
@@ -61,13 +60,11 @@ def get_vod_playlist():
         if start_time <= now < end_time:
             current_program = program
             program_start_time = start_time
-            if i > 0:
-                prev_program = schedule[i-1]
             break
     
     #該当する番組が存在しない場合
     if not current_program:
-        return Response(content="現在は放送されていません。",status_code=404)
+        return Response(content="現在は放送されていません。",status_code=432)
     
     #番組スタートからの経過時間
     time_info_program = (now - program_start_time).total_seconds()

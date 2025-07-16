@@ -3,185 +3,39 @@
 <head>
     <title>HLS Player</title>
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        .debug { margin-top: 20px; padding: 10px; background: #f0f0f0; border-radius: 5px; }
-        button { padding: 10px 20px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; }
-        .play-btn { background: #4CAF50; color: white; }
-        .reload-btn { background: #2196F3; color: white; }
+        body { 
+            margin: 0; 
+            padding: 20px; 
+            font-family: Arial, sans-serif; 
+            background: #000; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+        }
+        video { 
+            width: 400px;
+            height: 225px; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5); 
+        }
     </style>
 </head>
 <body>
-    <h1>HLS Streaming Player</h1>
-    
     <video id="videoPlayer" width="800" height="450" controls></video>
-    
-    <div>
-        <button class="play-btn" onclick="playVideo()">再生</button>
-        <button class="reload-btn" onclick="reloadStream()">ストリーム再読み込み</button>
-        <button onclick="testM3u8()">M3U8テスト</button>
-        <button onclick="testTSFile()">TSファイルテスト</button>
-    </div>
-    
-    <div class="debug">
-        <h3>デバッグ情報</h3>
-        <div id="debug-info"></div>
-    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
         const video = document.getElementById('videoPlayer');
-        const debugInfo = document.getElementById('debug-info');
         const streamUrl = 'http://localhost:8000/live/video.m3u8';
-        let hls;
 
-        function log(message) {
-            console.log(message);
-            debugInfo.innerHTML += `<div>${new Date().toLocaleTimeString()}: ${message}</div>`;
+        if (Hls.isSupported()) {
+            const hls = new Hls();
+            hls.loadSource(streamUrl);
+            hls.attachMedia(video);
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            video.src = streamUrl;
         }
-
-        function setupPlayer() {
-            log('プレーヤーをセットアップ中...');
-            
-            if (Hls.isSupported()) {
-                log('✓ HLS.js がサポートされています');
-                hls = new Hls({
-                    debug: false,
-                    enableWorker: false
-                });
-                
-                hls.loadSource(streamUrl);
-                hls.attachMedia(video);
-                
-                hls.on(Hls.Events.MANIFEST_PARSED, function(event, data) {
-                    log(`✓ HLSマニフェスト解析完了 - レベル数: ${data.levels.length}`);
-                });
-                
-                hls.on(Hls.Events.ERROR, function(event, data) {
-                    log(`❌ HLSエラー: ${data.type} - ${data.details}`);
-                    if (data.response) {
-                        log(`📄 レスポンス詳細: ${JSON.stringify(data.response)}`);
-                    }
-                    if (data.url) {
-                        log(`🔗 エラーURL: ${data.url}`);
-                    }
-                    if (data.fatal) {
-                        log('⚠️ 致命的エラーが発生しました');
-                        switch(data.type) {
-                            case Hls.ErrorTypes.NETWORK_ERROR:
-                                log('🔄 ネットワークエラー - 再試行中...');
-                                hls.startLoad();
-                                break;
-                            case Hls.ErrorTypes.MEDIA_ERROR:
-                                log('🔄 メディアエラー - 復旧中...');
-                                hls.recoverMediaError();
-                                break;
-                            default:
-                                log('❌ 復旧不可能なエラー');
-                                break;
-                        }
-                    }
-                });
-                
-                hls.on(Hls.Events.FRAG_LOADED, function(event, data) {
-                    log(`✓ セグメント読み込み完了: ${data.frag.url}`);
-                });
-                
-                hls.on(Hls.Events.FRAG_LOADING, function(event, data) {
-                    log(`🔄 セグメント読み込み中: ${data.frag.url}`);
-                });
-                
-                hls.on(Hls.Events.LEVEL_LOADED, function(event, data) {
-                    log(`✓ レベル読み込み完了: ${data.details.fragments.length} セグメント`);
-                });
-                
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                log('✓ ネイティブHLSサポートを使用');
-                video.src = streamUrl;
-            } else {
-                log('❌ HLSがサポートされていません');
-            }
-        }
-
-        function playVideo() {
-            log('再生ボタンがクリックされました');
-            
-            video.play().then(() => {
-                log('✓ 動画再生開始');
-            }).catch(error => {
-                log(`❌ 再生失敗: ${error.message}`);
-                
-                // 音声なしで再試行
-                video.muted = true;
-                return video.play();
-            }).then(() => {
-                if (video.muted) {
-                    log('✓ ミュート状態で再生開始');
-                }
-            }).catch(error => {
-                log(`❌ ミュート再生も失敗: ${error.message}`);
-            });
-        }
-
-        function reloadStream() {
-            log('ストリームを再読み込み中...');
-            if (hls) {
-                hls.destroy();
-            }
-            setupPlayer();
-        }
-
-        async function testM3u8() {
-            log('M3U8エンドポイントをテスト中...');
-            try {
-                const response = await fetch(streamUrl);
-                const text = await response.text();
-                log(`✓ M3U8レスポンス (${response.status}):`);
-                log(`📝 内容: ${text}`);
-                
-                // m3u8の構文チェック
-                const lines = text.split('\n');
-                if (!lines[0].includes('#EXTM3U')) {
-                    log('❌ m3u8ヘッダーが不正です');
-                }
-                if (!text.includes('#EXT-X-VERSION')) {
-                    log('❌ バージョンタグが不正です');
-                }
-                log('✓ m3u8基本構文チェック完了');
-                
-            } catch (error) {
-                log(`❌ M3U8取得エラー: ${error.message}`);
-            }
-        }
-
-        async function testTSFile() {
-            log('TSファイルのアクセステスト中...');
-            try {
-                // まずm3u8を取得してTSファイルのURLを取得
-                const m3u8Response = await fetch(streamUrl);
-                const m3u8Text = await m3u8Response.text();
-                
-                // 最初のTSファイルのURLを抽出
-                const lines = m3u8Text.split('\n');
-                const tsLine = lines.find(line => line.endsWith('.ts'));
-                
-                if (tsLine) {
-                    const tsUrl = `http://localhost:8000${tsLine}`;
-                    log(`📹 TSファイルテスト: ${tsUrl}`);
-                    
-                    const tsResponse = await fetch(tsUrl, { method: 'HEAD' });
-                    log(`✓ TSファイルアクセス成功 (${tsResponse.status})`);
-                    log(`📊 Content-Type: ${tsResponse.headers.get('content-type')}`);
-                    log(`📏 Content-Length: ${tsResponse.headers.get('content-length')}`);
-                } else {
-                    log('❌ m3u8からTSファイルが見つかりません');
-                }
-            } catch (error) {
-                log(`❌ TSファイルテストエラー: ${error.message}`);
-            }
-        }
-
-        // 初期化
-        setupPlayer();
     </script>
 </body>
 </html>

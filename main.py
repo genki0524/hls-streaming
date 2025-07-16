@@ -99,8 +99,6 @@ def get_vod_playlist():
         "#EXT-X-ALLOW-CACHE:YES"
     ]
     
-    # print("current_segment_index:",current_segment_index)
-    # print("start_index: ",start_index)
     last_program = None
     for global_index in range(start_global_index,global_current_segment + 1):
         #globalなsegmentのインデックスから番組内でのインデックスと番組名を取得

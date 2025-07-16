@@ -1,0 +1,14 @@
+[
+  { 
+    "start_time": "2025-07-16T22:36:00+09:00",
+    "duration_sec": 60,
+    "type": "VOD",
+    "path_template": "static/stream/hoooope-2025-01-15-copy/video{}.ts"
+  },
+  {
+    "start_time": "2025-07-16T22:37:00+09:00",
+    "duration_sec": 60,
+    "type": "VOD",
+    "path_template": "static/stream/hoooope-2025-01-16-copy/video{}.ts"
+  }
+]

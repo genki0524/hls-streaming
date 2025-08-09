@@ -16,7 +16,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -44,6 +44,69 @@ def get_program_by_global_segment(global_segment_index):
 
     return None,None
 
+def get_static_image_playlist():
+    """
+    番組がない場合の静的画像表示用のプレイリストを生成
+    次の番組開始時刻を考慮して動的に生成
+    """
+    jst = timezone(timedelta(hours=9))
+    now = datetime.now(jst)
+    
+    # 次の番組開始時刻を取得
+    next_program_start = None
+    for program in schedule:
+        start_time = datetime.fromisoformat(program["start_time"])
+        if start_time > now:
+            next_program_start = start_time
+            break
+    
+    # 次の番組までの時間を計算（最大30秒、最小5秒）
+    if next_program_start:
+        time_until_next = (next_program_start - now).total_seconds()
+        segment_duration = min(max(5, time_until_next), 30)  # 5秒〜30秒の範囲
+        segment_count = max(1, int(time_until_next / segment_duration))
+    else:
+        # 次の番組がない場合は30秒間隔で継続
+        segment_duration = 30
+        segment_count = 10
+    
+    m3u8_content = [
+        "#EXTM3U",
+        "#EXT-X-VERSION:3",
+        f"#EXT-X-TARGETDURATION:{int(segment_duration) + 1}",
+        "#EXT-X-MEDIA-SEQUENCE:0",
+        "#EXT-X-ALLOW-CACHE:NO"  # キャッシュを無効化して頻繁な更新を促す
+    ]
+    
+    # 動的にセグメント数を調整
+    for i in range(min(segment_count, 20)):  # 最大20セグメント
+        m3u8_content.append(f"#EXTINF:{segment_duration:.1f},")
+        m3u8_content.append("/static/images/picture.jpg")
+    
+    final_content = "\n".join(m3u8_content) + "\n"
+    return Response(content=final_content, media_type="application/vnd.apple.mpegurl")
+
+@app.get("/live/status")
+@app.head("/live/status")
+def get_stream_status():
+    """
+    現在の配信状態を確認するエンドポイント
+    番組がある場合のみ200を返す
+    """
+    jst = timezone(timedelta(hours=9))
+    now = datetime.now(jst)
+
+    # 現在時間に放送されている番組を特定
+    for program in schedule:
+        start_time = datetime.fromisoformat(program["start_time"])
+        end_time = start_time + timedelta(seconds=program["duration_sec"])
+        if start_time <= now < end_time:
+            # 番組がある場合は200を返す
+            return Response(content="LIVE", status_code=200)
+    
+    # 番組がない場合は204 No Contentを返す
+    return Response(content="", status_code=204)
+
 @app.get("/live/video.m3u8",response_class=Response)
 def get_vod_playlist():
     #timezoneを日本時間に変更
@@ -62,9 +125,9 @@ def get_vod_playlist():
             program_start_time = start_time
             break
     
-    #該当する番組が存在しない場合
+    #該当する番組が存在しない場合 - 静的画像表示用のプレイリストを返す
     if not current_program:
-        return Response(content="現在は放送されていません。",status_code=432)
+        return get_static_image_playlist()
     
     #番組スタートからの経過時間
     time_info_program = (now - program_start_time).total_seconds()
@@ -113,7 +176,7 @@ def get_vod_playlist():
         absolute_url = f"/{segment_filename}"
         m3u8_content.append(absolute_url)    
 
-        last_program = segment_program   
+        last_program = segment_program 
 
     final_content = "\n".join(m3u8_content) + "\n"
 

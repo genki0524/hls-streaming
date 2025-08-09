@@ -6,7 +6,6 @@
 ├── main.py
 ├── readme.md
 ├── schedule.json
-├── start_server.py
 └── static
     └── index.html
     └── stream

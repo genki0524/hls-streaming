@@ -1,20 +1,12 @@
 [
   { 
-    "start_time": "2025-08-07T19:43:00+09:00",
+    "start_time": "2025-08-09T18:06:00+09:00",
     "duration_sec": 60,
     "type": "VOD",
     "path_template": "static/stream/hoooope-2025-01-15-copy/video{}.ts"
   },
   {
-    "start_time": "2025-08-07T19:45:00+09:00",
-    "duration_sec": 120,
-    "type": "LIVE",
-    "live_name": "live",
-    "source": "0:0",
-    "title": "ライブ配信テスト"
-  },
-  {
-    "start_time": "2025-08-07T19:47:00+09:00",
+    "start_time": "2025-08-09T18:08:00+09:00",
     "duration_sec": 60,
     "type": "VOD",
     "path_template": "static/stream/hoooope-2025-01-16-copy/video{}.ts"

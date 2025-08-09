@@ -7,7 +7,8 @@
 ├── readme.md
 ├── schedule.json
 └── static
-    └── index.html
+    ├── index.html
+    ├── images
     └── stream
        └── 番組名
             ├── video.m3u8

@@ -1,9 +1,11 @@
 import json
 import math
-from datetime import datetime,timezone,timedelta
+from datetime import timezone,timedelta
+import datetime
 from fastapi import FastAPI,Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from app.firestore import db
 
 SEGMENT_DURATION = 9
 PLAYLIST_LENGTH = 6
@@ -21,8 +23,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-with open("schedule.json","r") as f:
-    schedule = sorted(json.load(f),key=lambda x: x["start_time"])
+today_string = datetime.date.today().strftime('%Y-%m-%d')
+
+doc_ref = db.collection("schedules").document(today_string)
+doc = doc_ref.get()
+
+data = doc.to_dict()
+schedule = data["programs"]
+schedule.sort(key=lambda x:x['start_time'])
 
 def get_program_by_global_segment(global_segment_index):
     """
@@ -50,12 +58,12 @@ def get_static_image_playlist():
     次の番組開始時刻を考慮して動的に生成
     """
     jst = timezone(timedelta(hours=9))
-    now = datetime.now(jst)
+    now = datetime.datetime.now(jst)
     
     # 次の番組開始時刻を取得
     next_program_start = None
     for program in schedule:
-        start_time = datetime.fromisoformat(program["start_time"])
+        start_time = datetime.datetime.fromisoformat(program["start_time"])
         if start_time > now:
             next_program_start = start_time
             break
@@ -94,11 +102,11 @@ def get_stream_status():
     番組がある場合のみ200を返す
     """
     jst = timezone(timedelta(hours=9))
-    now = datetime.now(jst)
+    now = datetime.datetime.now(jst)
 
     # 現在時間に放送されている番組を特定
     for program in schedule:
-        start_time = datetime.fromisoformat(program["start_time"])
+        start_time = datetime.datetime.fromisoformat(program["start_time"])
         end_time = start_time + timedelta(seconds=program["duration_sec"])
         if start_time <= now < end_time:
             # 番組がある場合は200を返す
@@ -111,14 +119,14 @@ def get_stream_status():
 def get_vod_playlist():
     #timezoneを日本時間に変更
     jst = timezone(timedelta(hours=9))
-    now = datetime.now(jst)
+    now = datetime.datetime.now(jst)
 
     current_program = None
     program_start_time = None
 
     #現在時間に放送されている番組を特定
     for i,program in enumerate(schedule):
-        start_time = datetime.fromisoformat(program["start_time"])
+        start_time = datetime.datetime.fromisoformat(program["start_time"])
         end_time = start_time + timedelta(seconds=program["duration_sec"])
         if start_time <= now < end_time:
             current_program = program

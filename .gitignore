@@ -3,3 +3,4 @@ static/movies
 static/images
 .DS_Store
 __pycache__/
+credentials
